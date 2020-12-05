@@ -1,41 +1,20 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const app = express();
-const graphQLHttp = require("express-graphql").graphqlHTTP;
-const graphQLSchema = require("./graphql/schema/schemas");
-const graphQLResolvers = require("./graphql/resolvers/resolvers");
-app.use(bodyParser.json());
-
-app.use(
-  "/graphql",
-  graphQLHttp({
-    schema: graphQLSchema.schemas,
-    graphiql: true,
-    rootValue: { ...graphQLResolvers.resolvers },
-  })
+// graphql configs
+const { ApolloServer } = require("apollo-server-express");
+const { mergeTypes, fileLoader } = require("merge-graphql-schemas");
+const { app } = require("./servers/httpServer");
+const graphQLResolvers = require("./graphql/resolvers/index");
+const path = require("path");
+const { db } = require("./db/mongoDB");
+// merging schemas
+const typeDefs = mergeTypes(
+  fileLoader(path.join(__dirname, "./graphql/typeDefs/"))
 );
-// open Interface and write queries
-// No.1
-
-// query{
-// authors{
-//    name
-//   date
-//  }
-//  }
-
-// No.2
-
-// query{
-//   books{
-//     title
-//     Author{
-//       name
-//       date
-
-//     }
-//   }
-// }
-app.listen(8000, () => {
-  console.log("server is listening on ", 8000);
+// making server of graphql for api communications
+const apolloServer = new ApolloServer({
+  typeDefs: typeDefs,
+  resolvers: graphQLResolvers.resolvers,
+  context: ({ req, res }) => ({ req, res }),
 });
+apolloServer.applyMiddleware({ app });
+//db
+db();
